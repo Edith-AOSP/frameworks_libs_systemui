@@ -47,5 +47,12 @@ data class IconShape(
                     .iconMask,
                 createBitmap(1, 1, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) },
             )
+        // Shape that fills the entire bounds without clipping — preserves icon pack icons' native shape.
+        @JvmField
+        val NO_CLIP = IconShape(
+            DEFAULT_PATH_SIZE,
+            Path().apply { addRect(0f, 0f, DEFAULT_PATH_SIZE.toFloat(), DEFAULT_PATH_SIZE.toFloat(), Path.Direction.CW) },
+            createBitmap(1, 1, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) },
+        )
     }
 }

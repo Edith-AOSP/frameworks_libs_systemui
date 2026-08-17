@@ -38,6 +38,7 @@ import com.android.launcher3.icons.GraphicsUtils.generateIconShape
 import com.android.launcher3.icons.GraphicsUtils.transformed
 import com.android.launcher3.icons.IconNormalizer.ICON_VISIBLE_AREA_FACTOR
 import com.android.launcher3.icons.ShadowGenerator.BLUR_FACTOR
+import com.android.launcher3.icons.ExtendedBitmapDrawable.Companion.isFromIconPack
 import com.android.launcher3.util.FlagOp
 import com.android.launcher3.util.UserIconInfo
 import com.android.users.UserType
@@ -165,7 +166,7 @@ constructor(
         val oldBounds = icon.bounds
 
         var tempIcon: Drawable = icon
-        if (options.isFullBleed && icon is BitmapDrawable) {
+        if (options.isFullBleed && icon is BitmapDrawable && !icon.isFromIconPack) {
             // If the source is a full-bleed icon, create an adaptive icon by insetting this icon to
             // the extra padding
             var inset = AdaptiveIconDrawable.getExtraInsetFraction()
@@ -176,24 +177,28 @@ constructor(
                     InsetDrawable(icon, inset, inset, inset, inset),
                 )
         }
-        if (options.wrapNonAdaptiveIcon) tempIcon = wrapToAdaptiveIcon(tempIcon, options)
+        if (options.wrapNonAdaptiveIcon && !tempIcon.isFromIconPack) tempIcon = wrapToAdaptiveIcon(tempIcon, options)
 
         val drawFullBleed = options.drawFullBleed ?: drawFullBleedIcons
-        val bitmap = drawableToBitmap(tempIcon, drawFullBleed, options)
+        val bitmap = drawableToBitmap(tempIcon, drawFullBleed, options, icon.isFromIconPack)
         icon.bounds = oldBounds
 
         val color = options.extractedColor ?: findDominantColorByHue(bitmap)
         var flagOp = getBitmapFlagOp(options)
-        if (drawFullBleed) {
+        if (drawFullBleed && !icon.isFromIconPack) {
             flagOp = flagOp.addFlag(BitmapInfo.FLAG_FULL_BLEED)
             bitmap.setHasAlpha(false)
         }
+        if (icon.isFromIconPack) {
+            flagOp = flagOp.addFlag(BitmapInfo.FLAG_ICON_PACK)
+        }
 
+        val iconShape = if (icon.isFromIconPack) IconShape.EMPTY else defaultIconShape
         var info =
             BitmapInfo(
                 icon = bitmap,
                 color = color,
-                defaultIconShape = defaultIconShape,
+                defaultIconShape = iconShape,
                 flags = flagOp.apply(0),
             )
         if (icon is Extender) {
@@ -284,6 +289,7 @@ constructor(
         icon: Drawable,
         drawFullBleed: Boolean,
         options: IconOptions,
+        isFromIconPack: Boolean = false,
     ): Bitmap {
         if (icon is AdaptiveIconDrawable) {
             // We are ignoring KEY_SHADOW_DISTANCE because regular icons ignore this at the
@@ -325,10 +331,10 @@ constructor(
             iconToDraw.setBounds(0, 0, iconBitmapSize, iconBitmapSize)
 
             return createBitmap(options) { canvas, bitmap ->
-                if (drawFullBleed) canvas.drawColor(Color.BLACK)
+                if (drawFullBleed && !isFromIconPack) canvas.drawColor(Color.BLACK)
                 iconToDraw.draw(canvas)
 
-                if (options.addShadows && bitmap != null && !drawFullBleed) {
+                if (options.addShadows && bitmap != null && !drawFullBleed && !isFromIconPack) {
                     // Shadow extraction only works in software mode
                     shadowGenerator.drawShadow(bitmap, canvas)
 

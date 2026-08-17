@@ -45,6 +45,7 @@ import com.android.launcher3.icons.BitmapInfo
 import com.android.launcher3.icons.BitmapInfo.Companion.LOW_RES_ICON
 import com.android.launcher3.icons.GraphicsUtils
 import com.android.launcher3.icons.IconProvider
+import com.android.launcher3.icons.IconShape
 import com.android.launcher3.icons.PersistedItemState
 import com.android.launcher3.icons.SourceHint
 import com.android.launcher3.icons.ThemedBitmap
@@ -595,6 +596,9 @@ constructor(
             entry.bitmap.copy(
                 flags = getUserFlagOpLocked(cacheKey.user).apply(c.getInt(INDEX_FLAGS))
             )
+        if (entry.bitmap.flags and BitmapInfo.FLAG_ICON_PACK != 0) {
+            entry.bitmap = entry.bitmap.copy(defaultIconShape = IconShape.EMPTY)
+        }
         iconProvider.notifyIconLoaded(entry.bitmap, cacheKey, logic)
         return true
     }
@@ -674,7 +678,7 @@ constructor(
 
         // Ensures themed bitmaps in the icon cache are invalidated
         // LINT.IfChange(cache_release_version)
-        @JvmField val RELEASE_VERSION = if (Flags.enableLauncherIconShapes()) 14 else 12
+        @JvmField val RELEASE_VERSION = if (Flags.enableLauncherIconShapes()) 15 else 13
         // LINT.ThenChange()
 
         @JvmField val TABLE_NAME = "icons"

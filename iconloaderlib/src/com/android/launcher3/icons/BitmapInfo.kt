@@ -60,6 +60,7 @@ data class BitmapInfo(
                 FLAG_PRIVATE,
                 FLAG_FULL_BLEED,
                 FLAG_SYSTEM_HEADLESS,
+                FLAG_ICON_PACK,
             ],
     )
     internal annotation class BitmapInfoFlags
@@ -197,6 +198,7 @@ data class BitmapInfo(
         const val FLAG_PRIVATE: Int = 1 shl 3
         const val FLAG_FULL_BLEED: Int = 1 shl 4
         const val FLAG_SYSTEM_HEADLESS: Int = 1 shl 5
+        const val FLAG_ICON_PACK: Int = 1 shl 6
         // LINT.ThenChange(cache/BaseIconCache.kt:cache_release_version)
 
         // Drawable creation flags
