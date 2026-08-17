@@ -126,7 +126,7 @@ public class IconProvider {
         return getIcon(info, info, iconDpi);
     }
 
-    private Drawable getIcon(PackageItemInfo info, ApplicationInfo appInfo, int iconDpi) {
+    public Drawable getIcon(PackageItemInfo info, ApplicationInfo appInfo, int iconDpi) {
         String packageName = info.packageName;
         ThemeData td = getThemeDataForPackage(packageName);
 
@@ -274,7 +274,7 @@ public class IconProvider {
     /**
      * @return Today's day of the month, zero-indexed.
      */
-    private static int getDay() {
+    protected static int getDay() {
         return Calendar.getInstance().get(Calendar.DAY_OF_MONTH) - 1;
     }
 
