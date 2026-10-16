@@ -77,10 +77,15 @@ fun Modifier.progressiveBlur(
  *
  * @param radius maximum blur radius at the bottom edge.
  * @param bandHeight height of the transition band, measured up from the bottom edge.
+ * @param enabled when `false` (e.g. the shade transparency/blur setting is off), no blur is applied.
  */
 @Stable
-fun Modifier.bottomProgressiveBlur(radius: Dp, bandHeight: Dp): Modifier {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return this
+fun Modifier.bottomProgressiveBlur(
+    radius: Dp,
+    bandHeight: Dp,
+    enabled: Boolean = true,
+): Modifier {
+    if (!enabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return this
     return this.graphicsLayer {
         val x = size.width / 2f
         renderEffect =
@@ -186,10 +191,11 @@ internal fun progressiveLinearBlurSkSl(isVerticalBlur: Boolean): String {
             float2 pa = coord - startPoint;
             float2 ba = endPoint - startPoint;
             float fraction = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
-            // Ease the radius ramp with a smoothstep so the transition has no visible edge, matching
-            // the S-curve falloff of banded progressive-blur overlays.
-            float eased = fraction * fraction * (3.0 - 2.0 * fraction);
-            float intensity = mix(startIntensity, endIntensity, eased);
+            // Weight the ramp toward the start (blurred) end: intensity drops quickly as the pixel
+            // moves away from the start edge, so the blur stays a shallow edge frost instead of a
+            // tall band that reaches far up.
+            float curved = fraction * fraction;
+            float intensity = mix(startIntensity, endIntensity, curved);
             float radius = blurRadius * intensity;
             return half4(blur(coord, radius));
         }
