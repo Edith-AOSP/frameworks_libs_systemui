@@ -103,6 +103,9 @@ val DefaultProgressiveBlurRadius: Dp = 24.dp
 /**
  * Builds a [RenderEffect] that blurs [sizeWidth]x[sizeHeight] content with a radius that ramps
  * linearly from `start` to `end`.
+ *
+ * Uses two chained single-axis passes (horizontal then vertical), like AOSP — a single pass would
+ * blur along one axis only and look streaky rather than smooth.
  */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private fun progressiveBlurRenderEffect(
@@ -114,8 +117,29 @@ private fun progressiveBlurRenderEffect(
     startIntensity: Float,
     endIntensity: Float,
 ): RenderEffect {
-    val shader = RuntimeShader(progressiveLinearBlurSkSl(isVerticalBlur = true))
-    shader.setFloatUniform("blurRadius", radiusPx)
+    val hPass = RuntimeShader(progressiveLinearBlurSkSl(isVerticalBlur = false))
+    val vPass = RuntimeShader(progressiveLinearBlurSkSl(isVerticalBlur = true))
+    configurePass(hPass, radiusPx, sizeWidth, sizeHeight, start, end, startIntensity, endIntensity)
+    configurePass(vPass, radiusPx, sizeWidth, sizeHeight, start, end, startIntensity, endIntensity)
+    val hEffect = RenderEffect.createRuntimeShaderEffect(hPass, "content")
+    val vEffect = RenderEffect.createRuntimeShaderEffect(vPass, "content")
+    return RenderEffect.createChainEffect(vEffect, hEffect)
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private fun configurePass(
+    shader: RuntimeShader,
+    radiusPx: Float,
+    sizeWidth: Float,
+    sizeHeight: Float,
+    start: Offset,
+    end: Offset,
+    startIntensity: Float,
+    endIntensity: Float,
+) {
+    // Clamp before the radius reaches the shader, matching AOSP (the shader's maxRadius loop bound
+    // is not the thing enforcing the cap).
+    shader.setFloatUniform("blurRadius", radiusPx.coerceAtMost(MAX_BLUR_RADIUS_PX))
     // crop = (left, top, right, bottom) used by the shader's in-bounds test.
     shader.setFloatUniform("crop", 0f, 0f, sizeWidth, sizeHeight)
     // Clamp (0) rather than decal (1): renormalize interior samples so the edge doesn't fade out.
@@ -124,7 +148,6 @@ private fun progressiveBlurRenderEffect(
     shader.setFloatUniform("endIntensity", endIntensity)
     shader.setFloatUniform("startPoint", start.x, start.y)
     shader.setFloatUniform("endPoint", end.x, end.y)
-    return RenderEffect.createRuntimeShaderEffect(shader, "content")
 }
 
 /**
@@ -163,7 +186,10 @@ internal fun progressiveLinearBlurSkSl(isVerticalBlur: Boolean): String {
             float2 pa = coord - startPoint;
             float2 ba = endPoint - startPoint;
             float fraction = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
-            float intensity = mix(startIntensity, endIntensity, fraction);
+            // Ease the radius ramp with a smoothstep so the transition has no visible edge, matching
+            // the S-curve falloff of banded progressive-blur overlays.
+            float eased = fraction * fraction * (3.0 - 2.0 * fraction);
+            float intensity = mix(startIntensity, endIntensity, eased);
             float radius = blurRadius * intensity;
             return half4(blur(coord, radius));
         }
