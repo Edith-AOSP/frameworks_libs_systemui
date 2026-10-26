@@ -131,10 +131,10 @@ public class IconProvider {
         ThemeData td = getThemeDataForPackage(packageName);
 
         Drawable icon = null;
-        if (mCalendar != null && mCalendar.getPackageName().equals(packageName)) {
-            icon = loadCalendarDrawable(iconDpi, td);
-        } else if (mClock != null && mClock.getPackageName().equals(packageName)) {
-            icon = ClockDrawableWrapper.forPackage(mContext, mClock.getPackageName(), iconDpi);
+        if (isCalendarPackage(packageName)) {
+            icon = getCalendarDrawable(iconDpi);
+        } else if (isClockPackage(packageName)) {
+            icon = getClockDrawable(iconDpi);
         }
         if (icon == null) {
             icon = loadPackageIconWithFallback(info, appInfo, iconDpi);
@@ -147,6 +147,38 @@ public class IconProvider {
             }
         }
         return icon;
+    }
+
+    /** Returns true if [packageName] is the package configured as the dynamic calendar app. */
+    protected boolean isCalendarPackage(String packageName) {
+        return mCalendar != null && mCalendar.getPackageName().equals(packageName);
+    }
+
+    /** Returns true if [packageName] is the package configured as the dynamic clock app. */
+    protected boolean isClockPackage(String packageName) {
+        return mClock != null && mClock.getPackageName().equals(packageName);
+    }
+
+    /**
+     * Returns today's calendar icon, or null when the calendar package does not provide one.
+     */
+    @Nullable
+    protected Drawable getCalendarDrawable(int iconDpi) {
+        if (mCalendar == null) {
+            return null;
+        }
+        return loadCalendarDrawable(iconDpi, getThemeDataForPackage(mCalendar.getPackageName()));
+    }
+
+    /**
+     * Returns the live clock icon, or null when the clock package does not provide one.
+     */
+    @Nullable
+    protected Drawable getClockDrawable(int iconDpi) {
+        if (mClock == null) {
+            return null;
+        }
+        return ClockDrawableWrapper.forPackage(mContext, mClock.getPackageName(), iconDpi);
     }
 
     protected ThemeData getThemeDataForPackage(String packageName) {
@@ -190,7 +222,8 @@ public class IconProvider {
     }
 
     @TargetApi(Build.VERSION_CODES.TIRAMISU)
-    private Drawable loadCalendarDrawable(int iconDpi, @Nullable ThemeData td) {
+    @Nullable
+    protected Drawable loadCalendarDrawable(int iconDpi, @Nullable ThemeData td) {
         PackageManager pm = mContext.getPackageManager();
         try {
             final Bundle metadata = pm.getActivityInfo(

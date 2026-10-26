@@ -39,6 +39,7 @@ import com.android.launcher3.icons.GraphicsUtils.transformed
 import com.android.launcher3.icons.IconNormalizer.ICON_VISIBLE_AREA_FACTOR
 import com.android.launcher3.icons.ShadowGenerator.BLUR_FACTOR
 import com.android.launcher3.icons.ExtendedBitmapDrawable.Companion.isFromIconPack
+import com.android.launcher3.icons.ExtendedBitmapDrawable.Companion.isPreShapedIconPack
 import com.android.launcher3.util.FlagOp
 import com.android.launcher3.util.UserIconInfo
 import com.android.users.UserType
@@ -166,7 +167,9 @@ constructor(
         val oldBounds = icon.bounds
 
         var tempIcon: Drawable = icon
-        if (options.isFullBleed && icon is BitmapDrawable && !icon.isFromIconPack) {
+        val fromIconPack = icon.isFromIconPack
+        val preShapedPack = icon.isPreShapedIconPack
+        if (options.isFullBleed && icon is BitmapDrawable && !fromIconPack) {
             // If the source is a full-bleed icon, create an adaptive icon by insetting this icon to
             // the extra padding
             var inset = AdaptiveIconDrawable.getExtraInsetFraction()
@@ -177,23 +180,25 @@ constructor(
                     InsetDrawable(icon, inset, inset, inset, inset),
                 )
         }
-        if (options.wrapNonAdaptiveIcon && !tempIcon.isFromIconPack) tempIcon = wrapToAdaptiveIcon(tempIcon, options)
+        if (options.wrapNonAdaptiveIcon && !fromIconPack) tempIcon = wrapToAdaptiveIcon(tempIcon, options)
 
         val drawFullBleed = options.drawFullBleed ?: drawFullBleedIcons
-        val bitmap = drawableToBitmap(tempIcon, drawFullBleed, options, icon.isFromIconPack)
+        val bitmap = drawableToBitmap(tempIcon, drawFullBleed, options, fromIconPack)
         icon.bounds = oldBounds
 
         val color = options.extractedColor ?: findDominantColorByHue(bitmap)
         var flagOp = getBitmapFlagOp(options)
-        if (drawFullBleed && !icon.isFromIconPack) {
+        if (drawFullBleed && !preShapedPack) {
             flagOp = flagOp.addFlag(BitmapInfo.FLAG_FULL_BLEED)
-            bitmap.setHasAlpha(false)
+            // Icon-pack art keeps its alpha: its background layer may be transparent, and the
+            // full-bleed pack path does not draw the opaque backdrop used for system icons.
+            if (!fromIconPack) bitmap.setHasAlpha(false)
         }
-        if (icon.isFromIconPack) {
+        if (fromIconPack) {
             flagOp = flagOp.addFlag(BitmapInfo.FLAG_ICON_PACK)
         }
 
-        val iconShape = if (icon.isFromIconPack) IconShape.EMPTY else defaultIconShape
+        val iconShape = if (preShapedPack) IconShape.EMPTY else defaultIconShape
         var info =
             BitmapInfo(
                 icon = bitmap,
@@ -209,7 +214,7 @@ constructor(
             info =
                 info.copy(
                     themedBitmap =
-                        if (tempIcon is AdaptiveIconDrawable)
+                        if (tempIcon is AdaptiveIconDrawable && !fromIconPack)
                             themeController.createThemedBitmap(
                                 tempIcon,
                                 info,

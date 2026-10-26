@@ -596,7 +596,10 @@ constructor(
             entry.bitmap.copy(
                 flags = getUserFlagOpLocked(cacheKey.user).apply(c.getInt(INDEX_FLAGS))
             )
-        if (entry.bitmap.flags and BitmapInfo.FLAG_ICON_PACK != 0) {
+        if (entry.bitmap.flags and BitmapInfo.FLAG_ICON_PACK != 0 &&
+            entry.bitmap.flags and BitmapInfo.FLAG_FULL_BLEED == 0) {
+            // Legacy (pre-shaped) icon-pack art keeps its baked shape; adaptive pack icons are
+            // full-bleed and take the selected shape at draw time.
             entry.bitmap = entry.bitmap.copy(defaultIconShape = IconShape.EMPTY)
         }
         iconProvider.notifyIconLoaded(entry.bitmap, cacheKey, logic)
@@ -678,7 +681,7 @@ constructor(
 
         // Ensures themed bitmaps in the icon cache are invalidated
         // LINT.IfChange(cache_release_version)
-        @JvmField val RELEASE_VERSION = if (Flags.enableLauncherIconShapes()) 15 else 13
+        @JvmField val RELEASE_VERSION = if (Flags.enableLauncherIconShapes()) 16 else 14
         // LINT.ThenChange()
 
         @JvmField val TABLE_NAME = "icons"

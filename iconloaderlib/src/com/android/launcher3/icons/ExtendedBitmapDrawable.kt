@@ -6,14 +6,28 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 
+/** Marker for drawables supplied by an icon pack. */
+interface IconPackDrawable {
+    val isFromIconPack: Boolean
+
+    /**
+     * True when the pack art already carries its own shape (legacy bitmaps), so it must not be
+     * re-masked with the launcher's icon shape. False for adaptive/vector pack art.
+     */
+    val isPreShaped: Boolean
+}
+
 open class ExtendedBitmapDrawable(
     res: Resources,
     bitmap: Bitmap,
-    val isFromIconPack: Boolean
-) : BitmapDrawable(res, bitmap) {
+    override val isFromIconPack: Boolean,
+) : BitmapDrawable(res, bitmap), IconPackDrawable {
+
+    override val isPreShaped: Boolean get() = true
 
     companion object {
 
+        /** Wrap a pack drawable, flattening only art that has no adaptive layers to mask. */
         @JvmStatic
         fun wrap(res: Resources, drawable: Drawable?, isFromIconPack: Boolean): Drawable? {
             if (drawable == null) return null
@@ -31,6 +45,9 @@ open class ExtendedBitmapDrawable(
         }
 
         @JvmStatic
-        val Drawable.isFromIconPack get() = (this as? ExtendedBitmapDrawable)?.isFromIconPack ?: false
+        val Drawable.isFromIconPack get() = (this as? IconPackDrawable)?.isFromIconPack ?: false
+
+        @JvmStatic
+        val Drawable.isPreShapedIconPack get() = (this as? IconPackDrawable)?.isPreShaped ?: false
     }
 }

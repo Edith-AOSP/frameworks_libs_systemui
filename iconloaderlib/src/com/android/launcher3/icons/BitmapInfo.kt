@@ -176,6 +176,13 @@ data class BitmapInfo(
         return flags.hasMask(FLAG_FULL_BLEED)
     }
 
+    /**
+     * True for legacy icon-pack art whose shape is already baked into the bitmap, so the launcher
+     * must not clip it with the selected icon shape. Adaptive pack icons are full-bleed instead.
+     */
+    fun isPreShapedIconPack(): Boolean =
+        flags.hasMask(FLAG_ICON_PACK) && !flags.hasMask(FLAG_FULL_BLEED)
+
     /** Interface to be implemented by drawables to customize a BitmapInfo */
     interface Extender {
 
