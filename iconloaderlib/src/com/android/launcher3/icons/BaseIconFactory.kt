@@ -214,7 +214,10 @@ constructor(
             info =
                 info.copy(
                     themedBitmap =
-                        if (tempIcon is AdaptiveIconDrawable && !fromIconPack)
+                        if (
+                            tempIcon is AdaptiveIconDrawable &&
+                                (!fromIconPack || tempIcon.monochrome != null)
+                        )
                             themeController.createThemedBitmap(
                                 tempIcon,
                                 info,

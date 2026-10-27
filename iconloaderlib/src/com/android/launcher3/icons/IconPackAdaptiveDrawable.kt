@@ -9,7 +9,7 @@ import android.graphics.drawable.AdaptiveIconDrawable
  * icon shape, instead of flattening the pack art (which would bake in the system mask).
  */
 class IconPackAdaptiveDrawable(base: AdaptiveIconDrawable) :
-    AdaptiveIconDrawable(base.background, base.foreground), IconPackDrawable {
+    AdaptiveIconDrawable(base.background, base.foreground, base.monochrome), IconPackDrawable {
 
     override val isFromIconPack: Boolean get() = true
     override val isPreShaped: Boolean get() = false
