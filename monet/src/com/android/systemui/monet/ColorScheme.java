@@ -30,6 +30,7 @@ import com.google.ux.material.libmonet.dynamiccolor.ColorSpec.SpecVersion;
 import com.google.ux.material.libmonet.dynamiccolor.DynamicScheme;
 import com.google.ux.material.libmonet.dynamiccolor.DynamicScheme.Platform;
 import com.google.ux.material.libmonet.hct.Hct;
+import com.google.ux.material.libmonet.palettes.PaletteTuning;
 import com.google.ux.material.libmonet.scheme.SchemeCmf;
 import com.google.ux.material.libmonet.scheme.SchemeContent;
 import com.google.ux.material.libmonet.scheme.SchemeExpressive;
@@ -75,12 +76,71 @@ public class ColorScheme {
 
     public ColorScheme(@ColorInt int seed, boolean isDark, @ThemeStyle.Type int style,
             double contrastLevel, SpecVersion specVersion, Platform platform) {
-        this(List.of(seed), isDark, style, contrastLevel, specVersion, platform);
+        this(List.of(seed), isDark, style, contrastLevel, specVersion, platform,
+                PaletteTuning.NEUTRAL_LEVEL, PaletteTuning.NEUTRAL_LEVEL,
+                PaletteTuning.NEUTRAL_LEVEL);
+    }
+
+    /**
+     * Creates a scheme with relative accent-saturation, background-saturation and
+     * background-lightness adjustments. Values are percentages with 100 as unchanged.
+     */
+    public ColorScheme(@ColorInt int seed, boolean isDark, @ThemeStyle.Type int style,
+            int accentSaturation, int backgroundSaturation, int backgroundLightness) {
+        this(List.of(seed), isDark, style, 0.0, SpecVersion.SPEC_2026,
+                DynamicScheme.DEFAULT_PLATFORM, accentSaturation, backgroundSaturation,
+                backgroundLightness, true);
+    }
+
+    public ColorScheme(@ColorInt int seed, boolean isDark, @ThemeStyle.Type int style,
+            int accentSaturation, int backgroundSaturation, int backgroundLightness,
+            boolean accurateShades) {
+        this(List.of(seed), isDark, style, 0.0, SpecVersion.SPEC_2026,
+                DynamicScheme.DEFAULT_PLATFORM, accentSaturation, backgroundSaturation,
+                backgroundLightness, accurateShades);
+    }
+
+    /**
+     * Creates a scheme with a contrast level and relative palette intensity adjustments.
+     * Values are percentages with 100 as unchanged.
+     */
+    public ColorScheme(@ColorInt int seed, boolean isDark, @ThemeStyle.Type int style,
+            double contrastLevel, int accentSaturation, int backgroundSaturation,
+            int backgroundLightness) {
+        this(List.of(seed), isDark, style, contrastLevel, SpecVersion.SPEC_2026,
+                DynamicScheme.DEFAULT_PLATFORM, accentSaturation, backgroundSaturation,
+                backgroundLightness, true);
+    }
+
+    public ColorScheme(@ColorInt int seed, boolean isDark, @ThemeStyle.Type int style,
+            double contrastLevel, int accentSaturation, int backgroundSaturation,
+            int backgroundLightness, boolean accurateShades) {
+        this(List.of(seed), isDark, style, contrastLevel, SpecVersion.SPEC_2026,
+                DynamicScheme.DEFAULT_PLATFORM, accentSaturation, backgroundSaturation,
+                backgroundLightness, accurateShades);
     }
 
     public ColorScheme(@NonNull @Size(min = 1) List<Integer> seeds, boolean isDark,
             @ThemeStyle.Type int style,
             double contrastLevel, SpecVersion specVersion, Platform platform) {
+        this(seeds, isDark, style, contrastLevel, specVersion, platform,
+                PaletteTuning.NEUTRAL_LEVEL, PaletteTuning.NEUTRAL_LEVEL,
+                PaletteTuning.NEUTRAL_LEVEL);
+    }
+
+    public ColorScheme(@NonNull @Size(min = 1) List<Integer> seeds, boolean isDark,
+            @ThemeStyle.Type int style,
+            double contrastLevel, SpecVersion specVersion, Platform platform,
+            int accentSaturation, int backgroundSaturation, int backgroundLightness) {
+        this(seeds, isDark, style, contrastLevel, specVersion, platform,
+                accentSaturation, backgroundSaturation, backgroundLightness, true);
+    }
+
+    public ColorScheme(@NonNull @Size(min = 1) List<Integer> seeds, boolean isDark,
+            @ThemeStyle.Type int style,
+            double contrastLevel, SpecVersion specVersion, Platform platform,
+            int accentSaturation, int backgroundSaturation, int backgroundLightness,
+            boolean accurateShades) {
 
         this.mSeeds = seeds;
         this.mIsDark = isDark;
@@ -101,7 +161,7 @@ public class ColorScheme {
                                     : seed));
         }).toList();
 
-        mMaterialScheme = switch (style) {
+        DynamicScheme baseScheme = switch (style) {
             case ThemeStyle.SPRITZ -> new SchemeNeutral(seedHcts, isDark, contrastLevel,
                     specVersion,
                     platform);
@@ -129,6 +189,8 @@ public class ColorScheme {
                     contrastLevel);
             default -> throw new IllegalArgumentException("Unknown style: " + style);
         };
+        mMaterialScheme = applyTuning(baseScheme, style, accentSaturation, backgroundSaturation,
+                backgroundLightness, accurateShades);
 
         mAccent1 = new TonalPalette(mMaterialScheme.primaryPalette);
         mAccent2 = new TonalPalette(mMaterialScheme.secondaryPalette);
@@ -136,6 +198,71 @@ public class ColorScheme {
         mNeutral1 = new TonalPalette(mMaterialScheme.neutralPalette);
         mNeutral2 = new TonalPalette(mMaterialScheme.neutralVariantPalette);
         mError = new TonalPalette(mMaterialScheme.errorPalette);
+    }
+
+    private static DynamicScheme applyTuning(DynamicScheme scheme,
+            @ThemeStyle.Type int style, int accentSaturation, int backgroundSaturation,
+            int backgroundLightness, boolean accurateShades) {
+        if (accentSaturation == PaletteTuning.NEUTRAL_LEVEL
+                && backgroundSaturation == PaletteTuning.NEUTRAL_LEVEL
+                && backgroundLightness == PaletteTuning.NEUTRAL_LEVEL
+                && accurateShades) {
+            return scheme;
+        }
+
+        final boolean monochrome = style == ThemeStyle.MONOCHROMATIC;
+        final boolean rainbow = style == ThemeStyle.RAINBOW;
+        final PaletteTuning accentTuning = PaletteTuning.of(
+                monochrome ? PaletteTuning.NEUTRAL_LEVEL : accentSaturation,
+                monochrome ? backgroundLightness : PaletteTuning.NEUTRAL_LEVEL,
+                monochrome || accurateShades);
+        final PaletteTuning neutralTuning = PaletteTuning.of(
+                monochrome || rainbow ? PaletteTuning.NEUTRAL_LEVEL : backgroundSaturation,
+                backgroundLightness,
+                true);
+
+        final com.google.ux.material.libmonet.palettes.TonalPalette primary =
+                tune(scheme.primaryPalette, accentTuning);
+        final com.google.ux.material.libmonet.palettes.TonalPalette secondary =
+                tune(scheme.secondaryPalette, accentTuning);
+        final com.google.ux.material.libmonet.palettes.TonalPalette tertiary =
+                tune(scheme.tertiaryPalette, accentTuning);
+        final com.google.ux.material.libmonet.palettes.TonalPalette neutral =
+                tune(scheme.neutralPalette, neutralTuning);
+        final com.google.ux.material.libmonet.palettes.TonalPalette neutralVariant =
+                tune(scheme.neutralVariantPalette, neutralTuning);
+        final com.google.ux.material.libmonet.palettes.TonalPalette error =
+                tune(scheme.errorPalette,
+                        PaletteTuning.of(
+                                monochrome
+                                        ? PaletteTuning.NEUTRAL_LEVEL
+                                        : accentSaturation,
+                                monochrome ? backgroundLightness : PaletteTuning.NEUTRAL_LEVEL,
+                                true));
+
+        return new DynamicScheme(
+                scheme.sourceColorHctList,
+                scheme.variant,
+                scheme.isDark,
+                scheme.contrastLevel,
+                scheme.platform,
+                scheme.specVersion,
+                primary,
+                secondary,
+                tertiary,
+                neutral,
+                neutralVariant,
+                java.util.Optional.of(error));
+    }
+
+    private static com.google.ux.material.libmonet.palettes.TonalPalette tune(
+            com.google.ux.material.libmonet.palettes.TonalPalette palette,
+            PaletteTuning tuning) {
+        if (tuning.isIdentity()) {
+            return palette;
+        }
+        return com.google.ux.material.libmonet.palettes.TonalPalette.fromHueAndChroma(
+                palette.getHue(), palette.getChroma(), tuning);
     }
 
     public ColorScheme(@ColorInt int seed, boolean isDark, @ThemeStyle.Type int style,
